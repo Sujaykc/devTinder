@@ -4,34 +4,21 @@ const app = express();
 const port = 3000;
 
 
-app.use("/hello", (req, res) => {
-  res.send("Hello World!");
-});
-
-app.get("/user1", (req, res) => {
-  res.send("firstName: John, lastName: Doe");
-});
-app.post("/test", (req, res) => {
-  res.send("POST request received");
-});
-
-app.delete('/delete', (req, res)=>{
-  res.send("Data deleted succufully.");
-  });
-
-  app.post(/ab+cd/, (req, res)=>{
-    console.log("Route patterns");
-    res.send("this is route patterns")
-});
-app.get('/user/:id', (req, res)=>{
-  res.send(req.params);
-});
-
-app.get('/user', (req, res)=>{
-  res.send({"firstName" : 'Sujay', 'lastName' : 'kc'});
-})
-
-
+app.use('/user', (req, res,next)=>{
+  res.send('This is first response');
+  console.log("This is first rout handler");
+next();
+},
+(req, res, next)=>{
+  res.send('this is second response');
+  console.log("This is second route handler");
+  next();
+},
+(req, res, next)=>{
+  console.log("this is second route handler");
+  res.send("this is third route handler");
+}
+);
 
 
 app.listen(port, () => {
