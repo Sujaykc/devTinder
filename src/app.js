@@ -1,25 +1,16 @@
 const express = require('express');
 const app = express();
-
+const {adminAuth} = require('../middlewares/auth');
 const port = 3000;
 
 
-app.use('/user', (req, res,next)=>{
-  res.send('This is first response');
-  console.log("This is first rout handler");
-next();
-},
-(req, res, next)=>{
-  res.send('this is second response');
-  console.log("This is second route handler");
-  next();
-},
-(req, res, next)=>{
-  console.log("this is second route handler");
-  res.send("this is third route handler");
-}
-);
+app.get('/admin/getAllData', adminAuth, (req, res)=>{
+  res.send("This is all user data");
+})
 
+app.post('/login', (req, res)=>{
+  res.send("User logged in successfully");
+})
 
 app.listen(port, () => {
   console.log(`Server is running on :${port}`);
