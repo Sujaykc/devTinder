@@ -1,12 +1,16 @@
 const express = require('express');
 const app = express();
-const {adminAuth} = require('../middlewares/auth');
 const port = 3000;
 const connectDB = require('../config/database');
 const User = require('./models/userModel');
 const {validateSignUp} = require('./utils.js/validations');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const {generateToken, createToken} = require('./utils.js/token');
+const { requireAuth } = require('./middlewares/authMiddleware');
+const dotenv = require('dotenv');
 
+dotenv.config();
 app.use(express.json());
 
 app.post('/signUp', async(req, res)=>{
@@ -15,14 +19,18 @@ app.post('/signUp', async(req, res)=>{
   const {firstName, email, password, age, gender, about} = req.body;
 const passwordHash = await bcrypt.hash(password, 10);
 
-const userData = new User({
+const userData = await new User({
   firstName, email, password : passwordHash, age, gender, about
 });
-
-await userData.save();
-  res.status(201).send(userData);
+const token = createToken({userData : userData._id}, process.env.JWT_SECRET);
+userData.save();
+  res.status(201).json({
+    message : 'User regiseted successfully',
+    data : userData,
+    token
+  });
   }catch(err){
-    res.status(400).send('Error'+ err.message);
+    res.status(400).send('Error '+ err.message);
   } 
 });
 
@@ -34,27 +42,30 @@ const {email, password} = req.body;
     throw new Error('Invalid credentials');
   }
   const isCorrectPassword = await bcrypt.compare(password, user.password);
-  if(!isCorrectPassword)
+  if(isCorrectPassword)
 {
-  throw new Error('Invalid credentails');
+  const token = jwt.sign({user : user._id}, process.env.JWT_SECRET);
+   res.status(200).json({
+    message : 'User logged in successfully',
+    user,
+    token : token
+  });
 }else{
-res.status(200).send('user login successfully');
+  res.status(400).json({
+    message : 'Invalid credential'
+  });
 }
  }catch(err){
 res.status(404).send('Error : '+ err.message);
   }
 });
 
-
- 
-  
-
-app.get('/getUser', async (req, res)=>{
+app.get('/getUser', requireAuth, async (req, res)=>{
   const userEmail = req.body.email;
   const user = await User.find({email : userEmail});
   try{
     if(!user){
-      res.status(404).status.send("user not found");
+      res.status(404).send("user not found");
     }else{
     res.send(user);
     }
@@ -63,7 +74,7 @@ app.get('/getUser', async (req, res)=>{
   }
 })
 
-app.get('/getAllUsers', async (req, res)=>{
+app.get('/getAllUsers', requireAuth, async (req, res)=>{
   const user = await User.find();
   try{
  res.send(user);
@@ -72,7 +83,7 @@ res.status(404).send('user not found')
   }
 })
 
-app.patch('/:id', async (req, res) => {
+app.patch('/:id', requireAuth, async (req, res) => {
   const allowed_updates = ["firstName", "age", "about", "gender"];
   const updates = Object.keys(req.body);
   const isAllowed = updates.every((k) => allowed_updates.includes(k));
@@ -97,7 +108,7 @@ app.patch('/:id', async (req, res) => {
   }
 });
 
-app.delete('/:id', async(req, res)=>{
+app.delete('/:id', requireAuth, async(req, res)=>{
   try{
     const user = await User.findByIdAndDelete(req.params.id);
     if(!user){
@@ -113,7 +124,7 @@ app.delete('/:id', async(req, res)=>{
 connectDB().then(()=>{
   console.log("MongoDB connected successfully");
   app.listen(port, ()=>{
-    console.log("Server connected successfully");
+    console.log("Server connected successfully on "+ port);
   })
 }).catch((err)=>{
   console.log("DB connection failed "+ err.message);
